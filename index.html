@@ -22,13 +22,18 @@
                 e.preventDefault(); // prevents page reloading
                 socket.emit('chat message', {
                     message: $('#m').val(),
+                    user: $('#name').val(),
                     timeStamp: new Date()
                 });
                 $('#m').val('');
                 return false;
             });
             socket.on('chat message', function(msg) {
-                $('#messages').append($('<li>').text(msg.message + "    " + msg.timeStamp));
+                var timeStamp = new Date(msg.timeStamp);
+                $('#messages').append($('<li>').text(msg.message + "    -" + msg.user + "    " + timeStamp.getHours() + ':' + timeStamp.getMinutes()));
+            });
+            socket.on('message', function(username) {
+                $('#name').val(username);
             });
         });
     </script>
