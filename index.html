@@ -9,7 +9,7 @@
 <body>
     <ul id="messages"></ul>
     <form action="">
-        <input id="name" autocomplete="off" />
+        <input id="name" autocomplete="off" readonly/>
         <input id="m" autocomplete="off" /><button>Send</button>
     </form>
 
@@ -18,22 +18,111 @@
     <script>
         $(function() {
             var socket = io();
+
+            function getUsername() {
+                return document.cookie ? document.cookie.split('; ').find(row => row.startsWith('username')).split('=')[1] : undefined;
+            }
+
+            function getColor() {
+                return color = document.cookie ? document.cookie.split('; ').find(row => row.startsWith('color')).split('=')[1] : undefined;
+            }
+
+            function refreshChat() {
+                $('#messages').empty();
+                $('#name').val(getUsername());
+                $('#name').css("background-color", getColor());
+                socket.emit('refresh chat');
+            }
+
+            socket.on('connect', () => {
+                if (document.cookie) {
+                    $('#name').val(getUsername());
+                    $('#name').css("background-color", getColor());
+                }
+            });
+
+            socket.on('send user', function(user) {
+                document.cookie = "username=" + user.username;
+                document.cookie = "color=" + user.color;
+                $('#name').val(user.username);
+                $('#name').css("background-color", user.color);
+            });
+
             $('form').submit(function(e) {
                 e.preventDefault(); // prevents page reloading
+
+                //check for username change
+                if ($('#m').val().startsWith("/name <") && $('#m').val().endsWith(">")) {
+                    //parse new username 
+                    var newName = $('#m').val().substring($('#m').val().indexOf('<') + 1, $('#m').val().lastIndexOf('>'));
+                    var oldName = getUsername();
+                    socket.emit(
+                        'update username', {
+                            newName: newName,
+                            oldName: oldName
+                        },
+                        function(success) {
+                            if (success) {
+                                document.cookie = "username=" + newName;
+                                refreshChat();
+                            } else {
+                                alert("That username has already been taken!");
+                            }
+                        }
+                    );
+                    $('#m').val('');
+                    return false;
+                }
+
+                //check for color change
+                if ($('#m').val().startsWith("/color ")) {
+                    //parse new color 
+                    var newColor = $('#m').val().split(" ")[1];
+                    var oldColor = getColor();
+                    socket.emit(
+                        'update color', {
+                            newColor: newColor,
+                            oldColor: oldColor
+                        },
+                        function(success, color) {
+                            if (success) {
+                                document.cookie = "color=" + color;
+                                refreshChat();
+                            } else {
+                                alert("That color is invalid or has already been taken!\nPlease specify a color in the following format: \'/color RRRGGGBBB\'");
+                            }
+                        }
+                    );
+                    $('#m').val('');
+                    return false;
+                }
+
                 socket.emit('chat message', {
                     message: $('#m').val(),
-                    user: $('#name').val(),
+                    user: getUsername(),
+                    color: getColor(),
                     timeStamp: new Date()
                 });
                 $('#m').val('');
                 return false;
             });
+
+            socket.on('get cache', (cache) => {
+                cache.forEach(element => {
+                    var timeStamp = new Date(element.timeStamp);
+                    $('#messages').append(
+                        $('<li>')
+                        .text(element.user + ":    " + element.message + "    @" + timeStamp.getHours() + ':' + (timeStamp.getMinutes() < 10 ? "0" : "") + timeStamp.getMinutes())
+                        .css("color", element.color));
+                });
+            });
+
             socket.on('chat message', function(msg) {
                 var timeStamp = new Date(msg.timeStamp);
-                $('#messages').append($('<li>').text(msg.message + "    -" + msg.user + "    " + timeStamp.getHours() + ':' + timeStamp.getMinutes()));
-            });
-            socket.on('message', function(username) {
-                $('#name').val(username);
+                $('#messages').append(
+                    $('<li>')
+                    .text(msg.user + ":    " + msg.message + "    @" + timeStamp.getHours() + ':' + (timeStamp.getMinutes() < 10 ? "0" : "") + timeStamp.getMinutes())
+                    .css("color", msg.color));
             });
         });
     </script>
