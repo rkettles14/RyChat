@@ -1,31 +1,37 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+html body {
+    font: 13px Helvetica, Arial;
+    background-color: rgb(36, 36, 36);
 }
 
-body {
-    font: 13px Helvetica, Arial;
+.form-group {
+    width: 100%;
 }
 
 form {
-    background: #000;
     padding: 3px;
-    position: fixed;
     bottom: 0;
     width: 100%;
+}
+
+#m {
+    background-color: rgb(78, 78, 78);
+    width: 80%;
+    color: whitesmoke;
+}
+
+form label {
+    margin: 5px;
+    text-align: center;
 }
 
 form input {
     border: 0;
     padding: 10px;
-    width: 90%;
     margin-right: 0.5%;
 }
 
 form button {
-    width: 9%;
-    background: rgb(130, 224, 255);
+    width: 10%;
     border: none;
     padding: 10px;
 }
@@ -38,8 +44,40 @@ form button {
 
 #messages li {
     padding: 5px 10px;
+    background-color: rgb(36, 36, 36);
 }
 
 #messages li:nth-child(odd) {
-    background: #eee;
+    background: rgb(78, 78, 78);
+}
+
+#container {
+    overflow-y: auto;
+    height: 90vh;
+}
+
+.col-sm-12 {
+    margin-top: 35px;
+    background-color: rgb(36, 36, 36);
+}
+
+.col-sm-10 {
+    background-color: rgb(36, 36, 36);
+}
+
+.col-sm-2 {
+    background-color: rgb(36, 36, 36);
+    overflow-y: auto;
+    height: 90vh;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+#user {
+    margin-left: 15px;
+}
+
+html h3 {
+    color: whitesmoke;
+    text-align: center;
 }
