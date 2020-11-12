@@ -38,18 +38,7 @@ io.on('connection', (socket) => {
             if (err) throw err;
             var json = JSON.parse(data);
             json.push({ username: user, color: color });
-            var temp = [];
-            json.forEach(element => {
-                temp.push(JSON.stringify(element));
-            })
-            temp = temp.filter((v, i, a) => {
-                return a.indexOf((v)) == i; //remove duplicates
-            });
-            var userArray = [];
-            temp.forEach(element => {
-                userArray.push(JSON.parse(element));
-            })
-            io.emit('get online users', userArray); //send online users
+            sendOnlineUsers(json)
             json = JSON.stringify(json, null, 2);
             fs.writeFile(__dirname + '/users.json', json, (err) => {
                 if (err) throw err;
@@ -62,18 +51,7 @@ io.on('connection', (socket) => {
             if (err) throw err;
             var json = JSON.parse(data);
             json.push({ username: parseUsername(socket.handshake.headers.cookie), color: parseColor(socket.handshake.headers.cookie) });
-            var temp = [];
-            json.forEach(element => {
-                temp.push(JSON.stringify(element));
-            })
-            temp = temp.filter((v, i, a) => {
-                return a.indexOf((v)) == i; //remove duplicates
-            });
-            var userArray = [];
-            temp.forEach(element => {
-                userArray.push(JSON.parse(element));
-            })
-            io.emit('get online users', userArray); //send online users
+            sendOnlineUsers(json)
             json = JSON.stringify(json, null, 2);
             fs.writeFile(__dirname + '/users.json', json, (err) => {
                 if (err) throw err;
@@ -93,18 +71,7 @@ io.on('connection', (socket) => {
                     break;
                 }
             }
-            var temp = [];
-            json.forEach(element => {
-                temp.push(JSON.stringify(element));
-            })
-            temp = temp.filter((v, i, a) => {
-                return a.indexOf((v)) == i; //remove duplicates
-            });
-            var userArray = [];
-            temp.forEach(element => {
-                userArray.push(JSON.parse(element));
-            })
-            io.emit('get online users', userArray); //send online users
+            sendOnlineUsers(json)
             json = JSON.stringify(json, null, 2);
             fs.writeFile(__dirname + '/users.json', json, (err) => {
                 if (err) throw err;
@@ -136,33 +103,43 @@ io.on('connection', (socket) => {
     socket.on('update username', function(credentials, callback) {
         var isSuccess = true;
 
-        fs.readFile(__dirname + '/cache.json', function(err, data) {
-            if (err) throw err;
+        var cache = readFile('/cache.json');
+        cache.forEach(element => {
+            if (element.user === credentials.newName) {
+                isSuccess = false;
+            }
+        });
 
-            var json = JSON.parse(data);
-            //iterate through to see if new name is unique
-            json.forEach(element => {
-                if (element.user === credentials.newName) {
-                    isSuccess = false;
+        var users = readFile('/users.json');
+        users.forEach(element => {
+            if (element.username === credentials.newName) {
+                isSuccess = false;
+            }
+        });
+
+        if (isSuccess) {
+            //update username in cache
+            cache.forEach(element => {
+                if (element.user === credentials.oldName) {
+                    element.user = credentials.newName;
                 }
             });
 
-            if (isSuccess) {
-                //update username in cache
-                json.forEach(element => {
-                    if (element.user === credentials.oldName) {
-                        element.user = credentials.newName;
-                    }
-                });
+            writeFile('/cache.json', cache);
 
-                json = JSON.stringify(json, null, 4);
-                fs.writeFile(__dirname + '/cache.json', json, (err) => {
-                    if (err) throw err;
-                    console.log('Cache updated');
-                });
-            }
-            callback(isSuccess);
-        }); //TODO update usernames in log!
+            //update username in cache
+            users.forEach(element => {
+                if (element.username === credentials.oldName) {
+                    element.username = credentials.newName;
+                }
+            });
+
+            setUsernameCookie(credentials.newName, this);
+            writeFile('/users.json', users);
+            sendOnlineUsers(users);
+        }
+
+        callback(isSuccess);
     });
 
     socket.on('update color', function(credentials, callback) {
@@ -170,34 +147,44 @@ io.on('connection', (socket) => {
         if (credentials.newColor.length != 6 || !/^[0-9a-fA-F]+$/.test(credentials.newColor)) {
             isSuccess = false;
         }
-        let newColor = "#" + credentials.newColor;
-        fs.readFile(__dirname + '/cache.json', function(err, data) {
-            if (err) throw err;
+        credentials.newColor = "#" + credentials.newColor;
+        var cache = readFile('/cache.json');
+        cache.forEach(element => {
+            if (element.color === credentials.newColor) {
+                isSuccess = false;
+            }
+        });
 
-            var json = JSON.parse(data);
-            //iterate through to see if new name is unique
-            json.forEach(element => {
-                if (element.color === newColor) {
-                    isSuccess = false;
+        var users = readFile('/users.json');
+        users.forEach(element => {
+            if (element.color === credentials.newColor) {
+                isSuccess = false;
+            }
+        });
+
+        if (isSuccess) {
+            //update username in cache
+            cache.forEach(element => {
+                if (element.color === credentials.oldColor) {
+                    element.color = credentials.newColor;
                 }
             });
 
-            if (isSuccess) {
-                //update username in cache
-                json.forEach(element => {
-                    if (element.color === credentials.oldColor) {
-                        element.color = newColor;
-                    }
-                });
+            writeFile('/cache.json', cache);
 
-                json = JSON.stringify(json, null, 4);
-                fs.writeFile(__dirname + '/cache.json', json, (err) => {
-                    if (err) throw err;
-                    console.log('Cache updated');
-                });
-            }
-            callback(isSuccess, newColor); //TODO update user color in user log! ALSO TODO: HANDLE DUplicate USERS IN LOG
-        });
+            //update username in user log
+            users.forEach(element => {
+                if (element.color === credentials.oldColor) {
+                    element.color = credentials.newColor;
+                }
+            });
+
+            setColorCookie(credentials.newColor, this);
+            writeFile('/users.json', users);
+            sendOnlineUsers(users);
+        }
+
+        callback(isSuccess, credentials.newColor);
     });
 
     socket.on('chat message', (msg) => {
@@ -239,6 +226,42 @@ function parseUsername(cookie) {
     return cookie.split('; ').find(row => row.startsWith('username')).split('=')[1];
 }
 
+function setUsernameCookie(name, socket) {
+    var color = parseColor(socket.handshake.headers.cookie);
+    socket.handshake.headers.cookie = "username=" + name + "; color=" + color;
+}
+
+function setColorCookie(color, socket) {
+    var name = parseUsername(socket.handshake.headers.cookie);
+    socket.handshake.headers.cookie = "username=" + name + "; color=" + color;
+}
+
 function parseColor(cookie) {
     return cookie.split('; ').find(row => row.startsWith('color')).split('=')[1];
+}
+
+function readFile(fileName) {
+    var json = fs.readFileSync(__dirname + fileName);
+    return JSON.parse(json);
+}
+
+function writeFile(fileName, json) {
+    json = JSON.stringify(json, null, 4);
+    fs.writeFileSync(__dirname + fileName, json)
+    console.log('file updated');
+}
+
+function sendOnlineUsers(json) {
+    var temp = [];
+    json.forEach(element => {
+        temp.push(JSON.stringify(element));
+    })
+    temp = temp.filter((v, i, a) => {
+        return a.indexOf((v)) == i; //remove duplicates
+    });
+    var userArray = [];
+    temp.forEach(element => {
+        userArray.push(JSON.parse(element));
+    })
+    io.emit('get online users', userArray); //send online users
 }
