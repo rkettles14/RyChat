@@ -41,7 +41,7 @@ var textInput = new Vue({
                 return false;
             }
             //check for color change
-            if (this.message.startsWith("/color ")) {
+            else if (this.message.startsWith("/color ")) {
                 //parse new color 
                 var newColor = this.message.split(" ")[1];
                 var oldColor = getColor();
@@ -61,10 +61,13 @@ var textInput = new Vue({
                 );
                 this.message = "";
                 return false;
-            }
-            if (this.message === "/clear-cache") {
+            } else if (this.message === "/clear-cache") {
                 socket.emit('clear cache');
                 refreshChat();
+                this.message = "";
+                return false;
+            } else if (this.message.startsWith("/")) {
+                alert("Sorry this command is not supported.")
                 this.message = "";
                 return false;
             }
