@@ -20,6 +20,7 @@ io.on('connection', (socket) => {
 
     //check if new user
     if (!socket.handshake.headers.cookie) {
+        socket.handshake.headers.cookie = "username=" + user + "; " + "color=" + color;
         io.to(socket.id).emit('send user', {
             username: user,
             color: color
@@ -80,8 +81,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    socket.on
-
     socket.on('refresh chat', () => {
         fs.readFile(__dirname + '/cache.json', (err, data) => {
             if (err) throw err;
@@ -134,7 +133,7 @@ io.on('connection', (socket) => {
                 }
             });
 
-            setUsernameCookie(credentials.newName, this);
+            setUsernameCookie(credentials.newName, this); //TODO: fix for new user!!!
             writeFile('/users.json', users);
             sendOnlineUsers(users);
         }
@@ -229,6 +228,7 @@ function parseUsername(cookie) {
 function setUsernameCookie(name, socket) {
     var color = parseColor(socket.handshake.headers.cookie);
     socket.handshake.headers.cookie = "username=" + name + "; color=" + color;
+    //TODo fix for no cookies.
 }
 
 function setColorCookie(color, socket) {
